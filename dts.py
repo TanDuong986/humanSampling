@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import time
 import os
 import numpy as np
+import uuid
+from pascal_voc_writer import Writer
 
 def areaBox(box):
     x1,x2,x3,x4 = box 
@@ -22,15 +24,8 @@ def iou(box1,box2,thresh):
         intersection = areaBox(box1)+ areaBox(box2) - area
         iou = area/intersection
         return iou>= thresh
-# def sort(boxes,conf,thresh_conf=0.6,thresh_area=500):
-#     mask1 = conf >= thresh_conf
-#     for box in boxes:
-#         mask2 = areaBox(box) >= thresh_area
-#     mask = mask1*mask2
-#     return mask
+    
 
-# boxes = np.array([[0,0,200,200],[50,50,100,100],[20,20,300,300]])
-# confs = np.array([0.54,0.34,0.55])
 
 config_file = 'ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
 frozen_model = 'frozen_inference_graph.pb'
@@ -48,6 +43,7 @@ with open(file_name, 'rt') as fpt:
 
 prev_time =0
 new_time = 0
+runOutTime = 3
 
 cap = cv2.VideoCapture(0)
 font_scale = 3
@@ -57,18 +53,27 @@ while True:
     
     ret,frame = cap.read()
     if ret:
-        new_time = time.time()
-        ClassIndex, conf,bbox = model.detect(frame,confThreshold=0.55)
-        fps = 1/(new_time - prev_time)
-        prev_time = new_time
-        print(bbox)
-        if len(ClassIndex) != 0 :
+        ClassIndex, conf,bbox = model.detect(frame,confThreshold=0.6)
+        if (1 in ClassIndex) :
+            new_time = time.time()
+            idd = str(uuid.uuid1())
+            writer = Writer(f'data/label/image_{idd}.jpg', 640,480)
             for ClassInd, conf, boxes in zip(ClassIndex.flatten(),conf.flatten(),bbox):
-                if ClassInd == 1 and conf >= 0.6 :
+                if ClassInd == 1 :
+                    img = frame.copy()
+                    (x1,x2,x3,x4) = boxes #x3,x4 is width and height
                     cv2.rectangle(frame,boxes,(255,0,0),2)
-                    print(areaBox(boxes))
-                    cv2.putText(frame,classlabels[ClassInd-1],(boxes[0]+10,boxes[1]+40), font,fontScale=font_scale,color=(0,255,0))
-    
+                    cv2.putText(frame,classlabels[ClassInd-1],(boxes[0],boxes[1]), font,fontScale=font_scale,color=(0,255,0))
+                    # cv2.putText(frame,f'p1({x1},{x2}) | p2({x3},{x4})',(boxes[0],boxes[1]), font,fontScale=font_scale,color=(0,255,0))
+                    # add objects (class, xmin, ymin, xmax, ymax)
+                    writer.addObject(classlabels[ClassInd-1], x1,x2,x3+x1,x4+x2)
+            if new_time - prev_time >= runOutTime:
+                cv2.imwrite(f'data/img/image_{idd}.jpg',img)
+                writer.save(f'data/label/image_{idd}.xml')
+                prev_time = new_time
+                
+                
+
     cv2.imshow("OB",frame)
     
     if cv2.waitKey(1) & 0xFF == ord('q'):
