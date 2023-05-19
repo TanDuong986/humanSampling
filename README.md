@@ -8,3 +8,4 @@ I write this code suitable for all ROS1 and normal run. [dst_new](/dst_new.py) i
 
 Second, for ROS, [dts](/dts.py) will subscribe to a topic contains image which had configured in [sub_node](/sub_node_image.py), everytime this topic receive image and have human, it will do the same. I do this for semi-sampling image human use for my human detection custom project.
 
+# chap2
