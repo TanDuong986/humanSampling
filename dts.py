@@ -1,4 +1,4 @@
-#!/home/dtan/anaconda3/envs/py37/bin/python
+#!/home/dtan/anaconda3/envs/py37/bin/python3
 
 import cv2
 import matplotlib.pyplot as plt
@@ -33,8 +33,8 @@ def iou(box1,box2,thresh):
 
 if __name__ =="__main__":
     loc = os.getcwd()
-    config_file = 'ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
-    frozen_model = 'frozen_inference_graph.pb'
+    config_file = '/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
+    frozen_model = '/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/frozen_inference_graph.pb'
     model = cv2.dnn_DetectionModel(frozen_model,config_file)
 
     model.setInputSize(320,320)
@@ -42,13 +42,13 @@ if __name__ =="__main__":
     model.setInputMean((127.5, 127.5, 127.5)) # mobilenet => [-1, 1]
     model.setInputSwapRB(True)
 
-    output_path = {"img":"data/img","label":"data/label"}
+    output_path = {"img":"/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/img","label":"/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/label"}
     for p in output_path.values():
         if not os.path.exists(p):
             os.makedirs(p)
 
     classlabels = []
-    file_name = 'label.txt'
+    file_name = '/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/labels.txt'
     with open(file_name, 'rt') as fpt:
         classlabels = fpt.read().rstrip('\n').split('\n')
 
@@ -59,33 +59,41 @@ if __name__ =="__main__":
     font_scale = 3
     font = cv2.FONT_HERSHEY_PLAIN
 
+    take_size_id = 0
+    hwc = [0,0,0]
     try:
         image_subscriber = ImageSubscriber()
         while not rospy.is_shutdown():
             processed_image = image_subscriber.return_image()
             if processed_image is not None:
+                if take_size_id ==0:
+                    hwc[:] = processed_image.shape
                 # Do something with the processed image
                 ClassIndex, conf,bbox = model.detect(processed_image,confThreshold=0.6)
                 if (1 in ClassIndex) :
+                    img = processed_image.copy()
                     new_time = time.time()
                     idd = str(uuid.uuid1())
-                    writer = Writer(f'data/label/image_{idd}.jpg', 640,480)
+                    writer = Writer(f'/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/label/image_{idd}.jpg', hwc[1],hwc[0])
                     for ClassInd, conf, boxes in zip(ClassIndex.flatten(),conf.flatten(),bbox):
                         if ClassInd == 1 :
-                            img = processed_image.copy()
                             (x1,x2,x3,x4) = boxes #x3,x4 is width and height
-                            cv2.rectangle(processed_image,boxes,(255,0,0),2)
+                            cv2.rectangle(processed_image,boxes,(255,0,0),2) # this use type of x,y,w,h but when write, use type xmin, ymin, xmax, ymax
                             cv2.putText(processed_image,classlabels[ClassInd-1],(boxes[0],boxes[1]), font,fontScale=font_scale,color=(0,255,0))
                             # cv2.putText(frame,f'p1({x1},{x2}) | p2({x3},{x4})',(boxes[0],boxes[1]), font,fontScale=font_scale,color=(0,255,0))
                             
                             # add objects (class, xmin, ymin, xmax, ymax)
                             writer.addObject(classlabels[ClassInd-1], x1,x2,x3+x1,x4+x2)
                     if new_time - prev_time >= runOutTime:
-                        # cv2.imwrite(f'data/img/image_{idd}.jpg',img)
-                        # writer.save(f'data/label/image_{idd}.xml')
+                        cv2.imwrite(f'/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/img/image_{idd}.jpg',img)
+                        writer.save(f'/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/label/image_{idd}.xml')
+                        print(f'taken {uuid}')
                         prev_time = new_time
                 cv2.imshow("OB",processed_image)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+            else:
+                print("No signal")
+
     except rospy.ROSInterruptException:
         pass

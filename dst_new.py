@@ -27,7 +27,6 @@ def iou(box1,box2,thresh):
         return iou>= thresh
     
 
-
 config_file = '/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
 frozen_model = '/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/frozen_inference_graph.pb'
 model = cv2.dnn_DetectionModel(frozen_model,config_file)
@@ -44,7 +43,7 @@ with open(file_name, 'rt') as fpt:
 
 prev_time =0
 new_time = 0
-runOutTime = 3
+runOutTime = 2
 
 cap = cv2.VideoCapture(0)
 font_scale = 3
@@ -55,18 +54,20 @@ for p in output_path.values():
     if not os.path.exists(p):
         os.makedirs(p)
 
+for _ in range(10):
+    ret,frame = cap.read()
+
 while True:
-    
     ret,frame = cap.read()
     if ret:
-        ClassIndex, conf,bbox = model.detect(frame,confThreshold=0.65)
+        ClassIndex, conf,bbox = model.detect(frame,confThreshold=0.6)
         if (1 in ClassIndex) :
             new_time = time.time()
             idd = str(uuid.uuid1())
             writer = Writer(f'/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/label/image_{idd}.jpg', 640,480)
+            img = frame.copy()
             for ClassInd, conf, boxes in zip(ClassIndex.flatten(),conf.flatten(),bbox):
                 if ClassInd == 1 :
-                    img = frame.copy()
                     (x1,x2,x3,x4) = boxes #x3,x4 is width and height
                     cv2.rectangle(frame,boxes,(255,0,0),2)
                     cv2.putText(frame,classlabels[ClassInd-1],(boxes[0],boxes[1]), font,fontScale=font_scale,color=(0,255,0))
@@ -74,8 +75,9 @@ while True:
                     # add objects (class, xmin, ymin, xmax, ymax)
                     writer.addObject(classlabels[ClassInd-1], x1,x2,x3+x1,x4+x2)
             if new_time - prev_time >= runOutTime:
-                # cv2.imwrite(f'data/img/image_{idd}.jpg',img)
-                # writer.save(f'data/label/image_{idd}.xml')
+                cv2.imwrite(f'/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/img/image_{idd}.jpg',img)
+                writer.save(f'/home/dtan/catkin_ws/src/transfer_img/scripts/humanSampling/data/label/image_{idd}.xml')
+                print(f'taken image id {idd}')
                 prev_time = new_time
                 
     cv2.imshow("OD",frame)
