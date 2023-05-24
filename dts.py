@@ -68,6 +68,7 @@ if __name__ =="__main__":
             if processed_image is not None:
                 if take_size_id ==0:
                     hwc[:] = processed_image.shape
+                    take_size_id +=1
                 # Do something with the processed image
                 ClassIndex, conf,bbox = model.detect(processed_image,confThreshold=0.6)
                 if (1 in ClassIndex) :
