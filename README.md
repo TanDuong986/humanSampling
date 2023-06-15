@@ -10,4 +10,8 @@ Second, for ROS, [dts](/dts.py) will subscribe to a topic contains image which h
 
 ---
 Here is a sample that I take myself :vietnam: :smile: :vietnam:. Detector just detect human, the confident around 0.6-0.8
-![](/example.png)
+![](example.png)
+
+---
+
+File [convert](./bv2.py) can convert stream image in a topic into video.
